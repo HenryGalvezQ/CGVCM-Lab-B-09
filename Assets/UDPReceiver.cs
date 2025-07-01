@@ -1,14 +1,15 @@
 using UnityEngine;
-using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 public class UDPReceiver : MonoBehaviour
 {
     public static UDPReceiver Instance;
     UdpClient client;
-    Thread receiveThread;
+    CancellationTokenSource cts;
+    Task receiveTask;
     public float LeftY { get; private set; }
     public float RightY { get; private set; }
 
@@ -21,21 +22,29 @@ public class UDPReceiver : MonoBehaviour
     void Start()
     {
         client = new UdpClient(5065);
-        receiveThread = new Thread(ReceiveLoop) { IsBackground = true };
-        receiveThread.Start();
+        cts = new CancellationTokenSource();
+        receiveTask = ReceiveLoopAsync(cts.Token);
     }
 
-    void ReceiveLoop()
+    async Task ReceiveLoopAsync(CancellationToken token)
     {
-        var anyIP = new IPEndPoint(IPAddress.Any, 0);
-        while (true)
+        while (!token.IsCancellationRequested)
         {
-            var data = client.Receive(ref anyIP);
-            var msg = Encoding.UTF8.GetString(data);
-            var parts = msg.Split(',');
-            if (parts.Length < 2) continue;
+            UdpReceiveResult res;
+            try
+            {
+                res = await client.ReceiveAsync();
+            }
+            catch (ObjectDisposedException)
+            {
+                break;
+            }
+            var msg = Encoding.UTF8.GetString(res.Buffer);
 
-            if (float.TryParse(parts[0], out float yL) &&
+
+            var parts = msg.Split(',');
+            if (parts.Length >= 2 &&
+                float.TryParse(parts[0], out float yL) &&
                 float.TryParse(parts[1], out float yR))
             {
                 float normL = Mathf.Clamp01(1f - yL / 480f);
@@ -47,5 +56,11 @@ public class UDPReceiver : MonoBehaviour
         }
     }
 
-    void OnApplicationQuit() => receiveThread?.Abort();
+    void OnApplicationQuit()
+    {
+        cts?.Cancel();
+        client?.Close();
+    }
+
+    void OnDestroy() => OnApplicationQuit();
 }
