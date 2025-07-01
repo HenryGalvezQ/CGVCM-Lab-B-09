@@ -31,3 +31,9 @@ python RemotePaddle.py --side L --color blue --ip 192.168.0.10
 En el equipo que ejecuta Unity, `UDPReceiver` aceptará mensajes con el
 formato `L:valor` o `R:valor` para controlar las raquetas izquierda y
 derecha respectivamente.
+
+## Modo de un jugador con IA
+
+Agregamos el script `AIPaddle.cs` para que una raqueta pueda seguir
+automáticamente la posición de la pelota. Asigna el script al paddle
+que quieras automatizar y referencia la bola desde el Inspector.
