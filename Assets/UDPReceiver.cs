@@ -32,10 +32,22 @@ public class UDPReceiver : MonoBehaviour
         {
             var data = client.Receive(ref anyIP);
             var msg = Encoding.UTF8.GetString(data);
-            var parts = msg.Split(',');
-            if (parts.Length < 2) continue;
 
-            if (float.TryParse(parts[0], out float yL) &&
+            if (msg.Contains(":"))
+            {
+                var p = msg.Split(':');
+                if (p.Length == 2 && float.TryParse(p[1], out float y))
+                {
+                    float norm = Mathf.Clamp01(1f - y / 480f) * 2f - 1f;
+                    if (p[0].StartsWith("L")) LeftY = norm;
+                    else if (p[0].StartsWith("R")) RightY = norm;
+                }
+                continue;
+            }
+
+            var parts = msg.Split(',');
+            if (parts.Length >= 2 &&
+                float.TryParse(parts[0], out float yL) &&
                 float.TryParse(parts[1], out float yR))
             {
                 float normL = Mathf.Clamp01(1f - yL / 480f);
